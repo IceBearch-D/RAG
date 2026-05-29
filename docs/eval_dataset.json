@@ -1,0 +1,52 @@
+[
+  {
+    "question": "什么是 Data Connector？",
+    "ground_truth": "Data Connector（数据连接器）用于对接各类数据源（数据库、API、文件系统、网页等）的统一抽象接口，负责数据的采集与增量同步。",
+    "source_doc": "keyword.txt"
+  },
+  {
+    "question": "什么是 ETL在RAG中的含义？",
+    "ground_truth": "数据的抽取-转换-加载流程，在 RAG 中指从原始数据源抽取文档、转换为统一格式、加载到处理管道中的过程。",
+    "source_doc": "keyword.txt"
+  },
+  {
+    "question": "RAG 的核心定位是什么？",
+    "ground_truth": "RAG = 外挂一个可动态更新的知识库，让 LLM 在回答时“先查资料，再回答”，从而在不重新训练模型的前提下注入新知识。",
+    "source_doc": "Rag_Introduction.md"
+  },
+  {
+    "question": "LLM 存在哪三个根本性缺陷？",
+    "ground_truth": "知识过时（训练数据有截止日期）、幻觉问题（会编造事实）以及缺乏私域知识（不了解企业内部文档）。",
+    "source_doc": "Rag_Introduction.md"
+  },
+  {
+    "question": "Fine-tuning 和 RAG 的核心区别是什么？",
+    "ground_truth": "Fine-tuning 是把知识“蒸馏”进模型参数里，知识固化且更新成本高；RAG 则是把知识“放在外部”，推理时检索注入，知识可热更新且成本低。",
+    "source_doc": "Rag_Introduction.md"
+  },
+  {
+    "question": "小林面试笔记的 AI Agent 面试题主要有什么特点？",
+    "ground_truth": "题目全部来自大厂真实面经；每道题开头都有“面试现场复盘”；配通俗易懂的手绘风格配图；从根子上讲透原理。",
+    "source_doc": "小林面试指南.txt"
+  },
+  {
+    "question": "文档解析层中的 OCR 技术是什么？",
+    "ground_truth": "OCR（Optical Character Recognition）是将图片、扫描件中的文字识别为可编辑文本的技术，用于处理扫描版 PDF、图片中的文字。",
+    "source_doc": "keyword.txt"
+  },
+  {
+    "question": "Chunk Overlap 的常见比例是多少？作用是什么？",
+    "ground_truth": "相邻两个分块之间的重叠长度通常为 chunk size 的 10%~20%，作用是防止关键信息恰好被切在边界处而丢失上下文。",
+    "source_doc": "keyword.txt"
+  },
+  {
+    "question": "自反思 RAG（Self-RAG）的核心机制是什么？",
+    "ground_truth": "LLM 在生成过程中自主判断是否需要检索、检索结果是否相关、回答是否被证据支持，通过输出特殊反思 token 实现自适应决策。",
+    "source_doc": "keyword.txt"
+  },
+  {
+    "question": "Advanced RAG（进阶 RAG）相比 Naive RAG 增加了哪些技术？",
+    "ground_truth": "在 Naive RAG 基础上加入了查询改写、混合检索、Reranking、上下文压缩等优化技术。",
+    "source_doc": "keyword.txt"
+  }
+]
