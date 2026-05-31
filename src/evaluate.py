@@ -1,10 +1,13 @@
 import json
 import os
+import sys
+import shutil
 import ollama
 from tqdm import tqdm
 
 from config import *
 from retriever import AdvancedRetriever
+from logger import logger
 
 EVAL_RECALL_PROMPT = """你是一个专业的评委。请根据提供的[标准答案]和检索到的[上下文]，评估[上下文]中是否包含了能够推导出[标准答案]的全部或部分关键信息。
 请只输出 0 或 1。1代表包含所需信息（召回成功），0代表不包含（召回失败）。
@@ -48,7 +51,7 @@ def run_evaluation():
     with open(dataset_path, "r", encoding="utf-8") as f:
         dataset = json.load(f)
 
-    print("初始化检索器...")
+    logger.info("初始化检索器...")
     retriever = AdvancedRetriever()
     
     pipelines = {
@@ -58,7 +61,7 @@ def run_evaluation():
         "4_+Reranker": []
     }
     
-    print("开始评测...")
+    logger.info("开始评测...")
     for idx, data in enumerate(tqdm(dataset, desc="Evaluating")):
         q = data["question"]
         gt = data["ground_truth"]
@@ -112,15 +115,28 @@ def run_evaluation():
             })
             
     # 输出结果
-    print("\n" + "="*60)
-    print("评测结果统计 (LLM-as-a-Judge)：")
-    print("="*60)
+    logger.info("\n" + "="*60)
+    logger.info("评测结果统计 (LLM-as-a-Judge)：")
+    logger.info("="*60)
     for p_name, metrics in pipelines.items():
         avg_recall = sum(m["recall"] for m in metrics) / len(metrics)
         avg_rel = sum(m["relevance"] for m in metrics) / len(metrics)
         avg_faith = sum(m["faithfulness"] for m in metrics) / len(metrics)
-        print(f"{p_name:<16} | Recall@K: {avg_recall:.2f} | Answer Relevance: {avg_rel:.2f} | Faithfulness: {avg_faith:.2f}")
-    print("="*60)
+        logger.info(f"{p_name:<16} | Recall@K: {avg_recall:.2f} | Answer Relevance: {avg_rel:.2f} | Faithfulness: {avg_faith:.2f}")
+    logger.info("="*60)
 
 if __name__ == "__main__":
+    # 支持桥接:
+    # python evaluate.py              # 保留日志
+    # python evaluate.py --clean-logs # 删除故事日志
+    
     run_evaluation()
+    
+    # 检查是否需要清理日志
+    if "--clean-logs" in sys.argv and LOG:
+        logger.info("\n举报: 删除测试日志...")
+        try:
+            shutil.rmtree(LOG_DIR)
+            logger.info(f"✅ 日志目录 {LOG_DIR} 已删除")
+        except Exception as e:
+            logger.error(f"因死日志目录失败: {e}")

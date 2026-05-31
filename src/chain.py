@@ -1,6 +1,7 @@
 import ollama
 from retriever import AdvancedRetriever
 from config import *
+from logger import logger
 
 class NativeRAGChain:
     def __init__(self):
@@ -44,7 +45,7 @@ class NativeRAGChain:
                 )
                 return response.choices[0].message.content.strip()
             except Exception as e:
-                print(f"⚠️ 在线 LLM API (_contextualize_question) 调用失败: {e}，正在切换为本地 Ollama...")
+                logger.warning(f"⚠️ 在线 LLM API (_contextualize_question) 调用失败: {e}，正在切换为本地 Ollama...")
                 fallback_to_local = True
                 
         if not USE_ONLINE_LLM or fallback_to_local:
@@ -66,11 +67,11 @@ class NativeRAGChain:
         # 2. 从向量库检索相关上下文
         context = self.retriever.retrieve_context(standalone_question)
         
-        # 在命令行中打印查找到的上下文，方便调试和观察
-        print("\n" + "="*50)
-        print(f"👀 【RAG 最终召回送入 LLM 的 Context】:\n{context}")
-        print(len(context.splitlines()))  # 打印上下文的行数，帮助判断是否过长或过短
-        print("="*50 + "\n")
+        # 记录查找到的上下文
+        logger.info("\n" + "="*50)
+        logger.info(f"👀 【RAG 最终召回送入 LLM 的 Context】:\n{context}")
+        logger.info(f"上下文行数: {len(context.splitlines())}")
+        logger.info("="*50 + "\n")
         
         # 3. 构造给大模型的最终 Prompt
         qa_system_prompt = f"""你是一个企业级智能安全审计与知识问答助手。
@@ -114,7 +115,7 @@ class NativeRAGChain:
                         yield chunk.choices[0].delta.content
                 return  # 如果正常结束，则直接退出
             except Exception as e:
-                print(f"⚠️ 在线 LLM API (stream_answer) 调用失败: {e}，正在尝试切换为本地 Ollama...")
+                logger.warning(f"⚠️ 在线 LLM API (stream_answer) 调用失败: {e}，正在尝试切换为本地 Ollama...")
                 fallback_to_local = True
                 
         if not USE_ONLINE_LLM or fallback_to_local:

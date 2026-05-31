@@ -6,6 +6,7 @@ import chromadb
 import ollama
 from pypdf import PdfReader
 from config import *
+from logger import logger
 
 def compute_md5(text: str) -> str:
     """计算文本的 MD5 摘要作为唯一 ID"""
@@ -130,7 +131,7 @@ def get_all_files():
                 filenames.add(meta["filename"])
         return list(filenames)
     except Exception as e:
-        print(f"获取知识库文件列表失败: {e}")
+        logger.error(f"获取知识库文件列表失败: {e}")
         return []
 
 def delete_file(filename: str):
@@ -142,17 +143,17 @@ def delete_file(filename: str):
         collection.delete(where={"filename": filename})
         # 注意：这里我们为了简便，暂不清理 docstore.json 里残留的 parent_chunks，
         # 因为向量数据库里已经没有它们，也就搜不出来了。如果想严格清理需要从 collection.get 里提取 doc_id 并从 docstore.json 里弹出。
-        print(f"✅ 文件 {filename} 的向量已从数据库中删除！")
+        logger.info(f"✅ 文件 {filename} 的向量已从数据库中删除！")
         return True
     except Exception as e:
-        print(f"删除失败: {e}")
+        logger.error(f"删除失败: {e}")
         return False
 
 def setup_ingestion_pipeline(file_path: str, filename: str = "unknown"):
     """
     文档处理流：读取 -> 父子切分 -> 向量化导入 (纯原生 Ollama + Chroma 实现)
     """
-    print(f"正在加载文档: {file_path} ({filename})")
+    logger.info(f"正在加载文档: {file_path} ({filename})")
     text_content = ""
     ext = filename.lower().split('.')[-1]
     
@@ -166,14 +167,14 @@ def setup_ingestion_pipeline(file_path: str, filename: str = "unknown"):
             doc = docx.Document(file_path)
             text_content = "\n".join([para.text for para in doc.paragraphs])
         except Exception as e:
-            print(f"读取 docx/doc 失败: {e}")
+            logger.error(f"读取 docx/doc 失败: {e}")
     elif ext in ["xls", "xlsx"]:
         try:
             import pandas as pd
             df = pd.read_excel(file_path)
             text_content = df.to_string(index=False)
         except Exception as e:
-            print(f"读取 Excel 失败: {e}")
+            logger.error(f"读取 Excel 失败: {e}")
     else:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             text_content = f.read()
@@ -194,7 +195,7 @@ def setup_ingestion_pipeline(file_path: str, filename: str = "unknown"):
             docstore = json.load(f)
 
     # 这里会对 docs 先按照父文档切分，再在其内部做子块切分并入库
-    print("开始切分并生成向量（这可能需要一些时间）...")
+    logger.info("开始切分并生成向量（这可能需要一些时间）...")
     
     parent_chunks = split_text(text_content, PARENT_CHUNK_SIZE, PARENT_CHUNK_OVERLAP)
     
@@ -235,7 +236,7 @@ def setup_ingestion_pipeline(file_path: str, filename: str = "unknown"):
                     child_documents.append(chunk)
                     child_metadatas.append({"doc_id": doc_id, "filename": filename})  # 在 metadata 里指向父文档
             except Exception as e:
-                print(f"⚠️ 在线 Embedding API (ingest) 调用失败: {e}，正在切换为本地 Ollama...")
+                logger.warning(f"⚠️ 在线 Embedding API (ingest) 调用失败: {e}，正在切换为本地 Ollama...")
                 fallback_to_local_emb = True
                 
         if not USE_ONLINE_EMBEDDING or fallback_to_local_emb:
@@ -258,12 +259,12 @@ def setup_ingestion_pipeline(file_path: str, filename: str = "unknown"):
 
     # 存子文档（并生成向量到 Chroma）
     if child_ids:
-        # --- 新增：打印写入向量数据库的内容（限制前几个避免严重刷屏） ---
-        print("\n" + "📥"*20)
-        print(f">> [输入] 即将写入向量数据库的子块，共计 {len(child_documents)} 个片段:")
+        # --- 新增：记录写入向量数据库的内容 ---
+        logger.debug("\n" + "📥"*20)
+        logger.debug(f">> [输入] 即将写入向量数据库的子块，共计 {len(child_documents)} 个片段:")
         for idx, doc in enumerate(child_documents): 
-            print(f"\n++++++++++【入库片段录入 {idx+1}/{len(child_documents)}】++++++++++\n{doc}\n----------------------------------")
-        print("📥"*20 + "\n")
+            logger.debug(f"\n++++++++++【入库片段录入 {idx+1}/{len(child_documents)}】++++++++++\n{doc}\n----------------------------------")
+        logger.debug("📥"*20 + "\n")
         
         # Chroma 的 add 方法如果遇到相同的 ID 会报错，使用 upsert 可实现存在即覆盖（幂等）
         batch_size = 100
@@ -274,7 +275,7 @@ def setup_ingestion_pipeline(file_path: str, filename: str = "unknown"):
                 documents=child_documents[i:i+batch_size],
                 metadatas=child_metadatas[i:i+batch_size]
             )
-    print("入库完成！")
+    logger.info("入库完成！")
 
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -282,5 +283,5 @@ if __name__ == "__main__":
     if os.path.exists(data_path):
         setup_ingestion_pipeline(data_path)
     else:
-        print(f"未找到 {data_path}")
+        logger.error(f"未找到 {data_path}")
 

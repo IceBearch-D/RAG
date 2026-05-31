@@ -32,3 +32,8 @@ CHILD_CHUNK_OVERLAP = 50
 RERANKER_MODEL = "BAAI/bge-reranker-base"
 TOP_K_RETRIEVAL = 10  # 多查询扩展后单路召回数量
 TOP_K_RERANK = 3      # 重排后返回给模型的最终数量
+
+# --- 日志配置 ---
+LOG = True                                    # True: 记录日志; False: 关闭日志输出
+LOG_DIR = os.path.join(BASE_DIR, "logs")     # 日志文件存储目录
+LOG_LEVEL = "INFO"                           # 日志级别: DEBUG, INFO, WARNING, ERROR

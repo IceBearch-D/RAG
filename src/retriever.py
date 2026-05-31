@@ -5,6 +5,7 @@ import ollama
 from sentence_transformers import CrossEncoder
 
 from config import *
+from logger import logger
 
 class AdvancedRetriever:
     def __init__(self):
@@ -48,7 +49,7 @@ class AdvancedRetriever:
                 )
                 content = response.choices[0].message.content
             except Exception as e:
-                print(f"⚠️ 在线 LLM API (_generate_multi_queries) 调用失败: {e}，正在切换为本地 Ollama...")
+                logger.warning(f"⚠️ 在线 LLM API (_generate_multi_queries) 调用失败: {e}，正在切换为本地 Ollama...")
                 fallback_to_local = True
                 
         if not USE_ONLINE_LLM or fallback_to_local:
@@ -85,7 +86,7 @@ class AdvancedRetriever:
                 )
                 q_embs = [data.embedding for data in resp.data]
             except Exception as e:
-                print(f"⚠️ 在线 Embedding API (_parent_child_retrieve) 调用失败: {e}，正在切换为本地 Ollama...")
+                logger.warning(f"⚠️ 在线 Embedding API (_parent_child_retrieve) 调用失败: {e}，正在切换为本地 Ollama...")
                 fallback_to_local_emb = True
                 
         if not USE_ONLINE_EMBEDDING or fallback_to_local_emb:
@@ -93,12 +94,12 @@ class AdvancedRetriever:
                 emb_res = ollama.embeddings(model=EMBEDDING_MODEL, prompt=q)
                 q_embs.append(emb_res["embedding"])
                 
-        # --- 打印向量数据库检索请求 ---
-        print("\n" + "🔥"*30)
-        print(">> [输入] 即将去向量数据库匹配的扩展查询词 (Queries):")
+        # --- 记录向量数据库检索请求 ---
+        logger.debug("\n" + "🔥"*30)
+        logger.debug(">>【输入】即将去向量数据库匹配的扩展查询词 (Queries):")
         for idx, q in enumerate(queries, 1):
-            print(f"  {idx}. {q}")
-        print("🔥"*30 + "\n")
+            logger.debug(f"  {idx}. {q}")
+        logger.debug("🔥"*30 + "\n")
         
         for idx, q_emb in enumerate(q_embs):
             # 去 Chroma 查子文档
@@ -107,20 +108,20 @@ class AdvancedRetriever:
                 n_results=TOP_K_RETRIEVAL
             )
             
-            # --- 打印向量数据库返回的初次召回文本 ---
-            print("\n" + "⭐"*30)
-            print(f"<< [输出] 向量数据库根据查询词 [{queries[idx]}] 初次召回的相关子片段:")
-            print("⭐"*30)
+            # --- 记录向量数据库返回的初次召回文本 ---
+            logger.debug("\n" + "⭐"*30)
+            logger.debug(f"<< [输出] 向量数据库根据查询词 [{queries[idx]}] 初次召回的相关子片段:")
+            logger.debug("⭐"*30)
             
             if results and results.get("documents") and results["documents"][0]:
                 for doc_idx, (doc, meta) in enumerate(zip(results["documents"][0], results["metadatas"][0]), 1):
                     doc_id = meta.get("doc_id", "未知")
-                    print(f"\n▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼【返回片段 {doc_idx} (父文档doc_id: {doc_id})】▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼")
-                    print(doc)
-                    print("▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲")
+                    logger.debug(f"\n▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼【返回片段 {doc_idx} (父文档doc_id: {doc_id})】▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼")
+                    logger.debug(doc)
+                    logger.debug("▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲")
             else:
-                print("⚠️ 未找到匹配的文档。")
-            print("⭐"*30 + "\n")
+                logger.debug("⚠️ 未找到匹配的文档。")
+            logger.debug("⭐"*30 + "\n")
             
             # 提取 metadata 里的父文档 ID
             if results and results["metadatas"] and results["metadatas"][0]:
